@@ -28,6 +28,7 @@ dx = (L-R)/N;
 x = R + dx/2 + (0:N-1)'*dx;
 %% initial guess/condition
 u0 = 0.9+u_pre -((1 - tanh(2*(x-(L-30)))).*(1 + tanh(2*(x-(L-70))))*(1-bb)/4);
+true_area = 64;
 u_init = u0;
 sub = zeros(size(u0));
 u02=u0;
@@ -40,8 +41,6 @@ tol = 0.05; % 0.01
 dt = 0.1; %0.1
 it_num = 100;
 time = zeros(it_num+1, 1);
-areas_under_curve = zeros(size(time));
-areas_under_curve(1) = trapz(x, u02);
 %%
 figure(1)
 plot(x,u02);
@@ -55,7 +54,7 @@ for j=1:length(epsilons)
     continue_flag = 1;
     ii = 1;
     while continue_flag
-        areas_under_curve(ii+1) = trapz(x, u02);
+        current_area = trapz(x, u02);
         time(ii+1) = ii*dt;
         eps=epsilons(j);
         om=10;
@@ -70,8 +69,12 @@ for j=1:length(epsilons)
             time_to_touch(j) = time(ii+1);
         end
         if max(u02)-min(u02) <= tol
-           continue_flag=0;
-           time_to_close(j) = time(ii+1);
+            continue_flag=0;
+            time_to_close(j) = time(ii+1);
+        end
+        if abs(current_area - true_area) > (tol * true_area)
+            continue_flag=0;
+            fprintf('The area is no longer consistent');
         end
         u0 = y_all(end, :);
         u02=u0+sub';
@@ -93,9 +96,6 @@ title(['\epsilon vs time (tol = ', num2str(tol), ')'])
 xlabel('\epsilon')
 ylabel('time (t_s)')
 legend('Time to merge', 'Time to close')
-
-figure(2)
-plot(time, areas_under_curve);
 
 function F = myfun(~,h)
     %% Ghost points outside the computational domain
